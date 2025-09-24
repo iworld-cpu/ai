@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Wedding AI Prompt Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 100%);
+        }
+        .font-display {
+            font-family: 'Playfair Display', serif;
+        }
+        .prompt-text {
+            background-color: #f8fafc;
+            color: #1e293b;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .tab-active {
+            border-color: #db2777;
+            color: #db2777;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .copy-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+            background-color: #e2e8f0;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(15, 23, 42, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+        }
+        @keyframes flash-bg-amber {
+          0% { background-color: #fef3c7; }
+          100% { background-color: #f8fafc; }
+        }
+         @keyframes flash-bg-sky {
+          0% { background-color: #e0f2fe; }
+          100% { background-color: #f8fafc; }
+        }
+        .is-copying-image { animation: flash-bg-amber 0.7s ease-in-out; }
+        .is-copying-video { animation: flash-bg-sky 0.7s ease-in-out; }
+        @keyframes pulse-highlight {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.6); }
+          50% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
+        }
+        .is-highlighted {
+            animation: pulse-highlight 1.8s ease-in-out 2;
+            border-radius: 0.75rem;
+            transition: box-shadow 0.3s;
+        }
+        @keyframes slide-in-down {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in-down {
+            animation: slide-in-down 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+        }
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .prompt-card {
+            opacity: 0;
+            animation: fade-in-up 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        #prompt-container.hide-image-prompts .image-prompt-group { display: none; }
+        #prompt-container.hide-video-prompts .video-prompt-group { display: none; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div id="login-container" class="flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl animate-slide-in-down">
+            <div>
+                <h1 class="text-3xl font-display text-center text-slate-900">Welcome Back!</h1>
+                <p class="text-center text-slate-600 mt-2">Log in to access the Prompt Generator.</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="email" class="text-sm font-medium text-slate-700">Email Address</label>
+                    <input type="email" id="email" required placeholder="any@email.com" class="w-full p-3 mt-1 bg-white/70 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
+                <div>
+                    <label for="password" class="text-sm font-medium text-slate-700">Password</label>
+                    <input type="password" id="password" required placeholder="••••••••" class="w-full p-3 mt-1 bg-white/70 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                     <p class="text-xs text-slate-500 mt-1">Hint: The password is `vfx@123`</p>
+                </div>
+                <p id="login-error" class="text-red-600 font-semibold text-sm hidden">Invalid credentials. Please try again.</p>
+                <button type="submit" class="w-full px-4 py-3 font-semibold text-white bg-slate-800 rounded-lg hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 transition-transform hover:scale-105">
+                    Log In
+                </button>
+            </form>
+             <p class="text-center text-sm text-slate-600">
+                Don't have an account? <a href="#" class="font-semibold text-pink-600 hover:underline">Sign Up</a>
+            </p>
+        </div>
+    </div>
+
+    <div id="app-container" class="container mx-auto p-4 md:p-8 hidden">
+        <header class="text-center mb-8 md:mb-12 relative animate-slide-in-down">
+            <div class="absolute top-0 left-0">
+                <span id="welcome-message" class="text-sm font-semibold text-slate-700"></span>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-display text-slate-900">Indian Wedding AI Prompt Generator</h1>
+            <p class="mt-2 text-lg text-slate-600">These prompts are for AI generators like Midjourney to create stunning wedding visuals.</p>
+            <div class="absolute top-0 right-0 flex flex-col sm:flex-row items-center gap-2">
+                <div id="copy-counters" class="flex items-center gap-2">
+                    <div id="image-copy-counter" title="Image Copies Left" class="flex items-center gap-1.5 text-sm font-semibold text-amber-800 bg-amber-100 px-3 py-1.5 rounded-lg"></div>
+                    <div id="video-copy-counter" title="Video Copies Left" class="flex items-center gap-1.5 text-sm font-semibold text-sky-800 bg-sky-100 px-3 py-1.5 rounded-lg"></div>
+                </div>
+                <button id="logout-btn" class="text-sm font-semibold text-slate-500 hover:text-pink-600 transition">Logout</button>
+            </div>
+        </header>
+
+        <main>
+            <section id="customization-form" class="bg-white/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg mb-8 md:mb-12 sticky top-4 z-10">
+                <h2 class="text-2xl font-bold mb-4 font-display text-slate-800">1. Add Your Details</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="lg:col-span-2">
+                        <label for="name1" class="block text-sm font-medium text-slate-700 mb-1">1. Groom's Name</label>
+                        <input type="text" id="name1" placeholder="e.g., Arjun" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label for="name2" class="block text-sm font-medium text-slate-700 mb-1">2. Bride's Name</label>
+                        <input type="text" id="name2" placeholder="e.g., Priya" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label for="date" class="block text-sm font-medium text-slate-700 mb-1">3. Wedding Date</label>
+                        <input type="date" id="date" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                    </div>
+                    <div class="lg:col-span-3">
+                        <label for="location" class="block text-sm font-medium text-slate-700 mb-1">4. Location</label>
+                        <input type="text" id="location" placeholder="e.g., Chennai" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label for="studio" class="block text-sm font-medium text-slate-700 mb-1">5. Studio Name</label>
+                        <input type="text" id="studio" placeholder="e.g., Moments Studio" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                    </div>
+                </div>
+            </section>
+
+            <section id="prompt-library">
+                <h2 class="text-2xl font-bold mb-6 font-display text-slate-800">2. Choose a Prompt</h2>
+                <div id="category-tabs" class="flex flex-wrap items-center gap-2 mb-6"></div>
+                <div id="prompt-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+                 <div id="no-results" class="text-center py-12 text-slate-500 hidden">
+                    <p class="text-xl">No prompts found for this category.</p>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="text-center mt-12 py-6 border-t border-slate-200">
+            <p class="text-slate-500">Designed to bring your wedding stories to life with AI.</p>
+        </footer>
+    </div>
+    
+    <div id="limit-modal" class="modal-overlay hidden">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 m-4 text-center">
+            <h3 class="text-2xl font-bold font-display text-rose-800 mb-2">Daily Limit Reached</h3>
+            <p id="limit-modal-text" class="text-slate-600 mb-4"></p>
+            <button id="limit-close-btn" class="w-full px-4 py-2 rounded-lg text-white bg-rose-600 hover:bg-rose-700 font-semibold">OK</button>
+        </div>
+    </div>
+
+
+    <script>
+        const promptData = {
+            "Tamil": [
+                { title: "Beach Wedding", image: "A Pixar-style 3D scene at sunset on Covelong Beach, [LOCATION]. [NAME1] & [NAME2] stand under a driftwood mandap. Text written in the sand: \"[NAME1] ♥ [NAME2] | [DATE_DOTTED]\". A carved coconut reads: \"[STUDIO]\". --ar 2:3", video: "Cinematic video shot of a Pixar-style 3D scene at sunset on a beautiful beach. A couple stands lovingly under a driftwood mandap. The waves gently crash on the shore. Golden hour lighting. --ar 2:3 --style raw" },
+                { title: "Royal Palace Muhurtham", image: "A grand Pixar-style 3D scene in Mysore Palace courtyard, [LOCATION]. Text on a banner held by a friendly elephant: \"The Wedding of [NAME1] & [NAME2]\". The date \"[DATE_FULL]\" is on a royal decree scroll. A jeweled box has the \"[STUDIO]\" logo. --ar 2:3", video: "Grand, sweeping cinematic shot of a Pixar-style 3D wedding ceremony in a majestic palace courtyard. A friendly elephant stands by. Rich, vibrant colors and opulent details. Dynamic camera movement. --ar 2:3 --style raw" },
+                { title: "Mehendi Ceremony", image: "A vibrant, colorful Pixar-style 3D scene. [NAME2] shows her mehendi. A vibrant fabric banner reads: \"Mehendi - [NAME1] & [NAME2] - [DATE_HYPHEN]\". A henna cone has \"[STUDIO]\" on it. A decorative plate says \"Lakshmi Mahal, [LOCATION]\". --ar 2:3", video: "Vibrant, colorful Pixar-style 3D video scene. A bride laughs joyfully as she shows her intricate mehendi designs to her friends. Dancing, music, and a festive atmosphere. Smooth slow-motion. --ar 2:3 --style raw" },
+                { title: "Sangeet Night", image: "A dynamic Pixar-style 3D scene with [NAME1] & [NAME2] dancing on stage. Text on a digital screen backdrop: \"Sangeet Night | [NAME1] & [NAME2] in [LOCATION]\". The date \"[DATE_HYPHEN]\" is part of the light show. The stage has \"[STUDIO]\" on the floor. --ar 2:3", video: "Dynamic, energetic Pixar-style 3D video of a couple dancing passionately on a stage with a digital screen backdrop. Colorful lights and lasers sweep across the scene. Guests cheer. High-energy movement. --ar 2:3 --style raw" },
+                { title: "Backyard Haldi", image: "A heartwarming, intimate Pixar-style 3D scene. Text on a rustic chalkboard: \"Haldi | [NAME1] & [NAME2] | [DATE_DOTTED]\". A clay pot has \"[STUDIO]\" etched. A small sign on a fence reads \"Family Home, [LOCATION]\". --ar 2:3", video: "Heartwarming, intimate cinematic Pixar-style 3D video in a backyard. Family members apply haldi paste to the laughing couple. Soft, morning light. Emotional and joyful close-up shots. --ar 2:3 --style raw" },
+                { title: "Grand Baraat", image: "Energetic Pixar-style 3D scene of [NAME1] on a horse. A welcome arch says: \"Welcome Baraat | [NAME1] & [NAME2] | [DATE_FULL]\". A dholak has the \"[STUDIO]\" logo. The entrance gate sign says \"Temple Entrance, [LOCATION]\". --ar 2:3", video: "Energetic, cinematic Pixar-style 3D video of a groom on a decorated horse. A lively procession dances around him with dhol players. Crowd cheering, confetti flying. Dynamic tracking shot. --ar 2:3 --style raw" },
+                { title: "Church Wedding", image: "Elegant Pixar-style 3D scene in a cathedral in [LOCATION]. Text on a church board: \"Holy Matrimony - [NAME1] & [NAME2] - [DATE_FULL]\". The hymn book has \"[STUDIO]\". The church name \"St. Mary's Cathedral\" is on the pew. --ar 2:3", video: "Elegant, serene cinematic Pixar-style 3D video inside a grand cathedral. Soft light streams through stained glass windows. A couple exchanges vows at the altar. Emotional close-ups, slow-motion. --ar 2:3 --style raw" },
+                { title: "Winter Wonderland", image: "A magical snowy Pixar-style 3D forest scene. Text on a frozen plaque: \"[NAME1] & [NAME2] | [DATE_HYPHEN]\". A hot cocoa mug has \"[STUDIO]\". A wooden sign reads \"Alpine Resort, [LOCATION]\". --ar 2:3", video: "Magical, cinematic Pixar-style 3D video of a wedding in a snowy forest. Snow gently falls on the couple under a pine tree arch. Warm lights twinkle. A serene, peaceful atmosphere. --ar 2:3 --style raw" },
+                { title: "Rustic Barn Reception", image: "Charming Pixar-style 3D reception scene. Text on a burlap banner: \"Reception - [NAME1] & [NAME2] - [DATE_FULL]\". A hay bale has the \"[STUDIO]\" brand. A sign says \"The Old Oak Barn, [LOCATION]\". --ar 2:3", video: "Charming, warm Pixar-style 3D video of a reception inside a rustic barn. Guests are dancing. String lights and a cozy atmosphere. Smooth panning shot across the room. --ar 2:3 --style raw" },
+                { title: "Sikh Anand Karaj", image: "Sacred Pixar-style 3D scene in a Gurdwara. Text on a Nishan Sahib flag: \"Anand Karaj | [NAME1] & [NAME2] | [DATE_DOTTED]\". The langar hall sign reads \"[STUDIO]\". The Gurdwara's name \"Sri Guru Singh Sabha, [LOCATION]\" is at the entrance. --ar 2:3", video: "Sacred, respectful cinematic Pixar-style 3D video inside a serene Gurdwara. The couple circles the Guru Granth Sahib. Soft, divine lighting. A sense of peace and devotion. --ar 2:3 --style raw" }
+             ],
+            "Kerala": [
+                { title: "Backwater Wedding", image: "Magical Pixar-style 3D scene of a wedding on a houseboat in Kerala backwaters near [LOCATION]. A sign on the boat reads '[NAME1] & [NAME2] | [DATE_FULL]'. The couple is in traditional kasavu attire. The name '[STUDIO]' is on a parasol. --ar 2:3", video: "Cinematic video shot of a Pixar-style 3D wedding on a houseboat in the Kerala backwaters. The couple is dressed in traditional attire, with lush green palms and serene waters. --ar 2:3" },
+                { title: "Thrissur Pooram Theme", image: "Energetic Pixar-style 3D scene of a wedding inspired by the Thrissur Pooram festival in [LOCATION]. The couple is surrounded by decorated elephants. A banner reads: 'The Wedding of [NAME1] & [NAME2], [DATE_DOTTED]'. '[STUDIO]' logo on a colorful umbrella. --ar 2:3", video: "An energetic, cinematic video inspired by the Thrissur Pooram festival. The couple is surrounded by decorated elephants and a lively crowd, with colorful umbrellas and fireworks. --ar 2:3" },
+                { title: "Onam-style Feast", image: "A vibrant Pixar-style 3D scene of a wedding feast in [LOCATION]. A pookkalam has '[NAME1_INITIAL] & [NAME2_INITIAL]' in petals. A serving bowl is engraved with '[STUDIO]'. The date '[DATE_FULL]' is on a wall calendar. --ar 2:3", video: "A vibrant, cinematic video of a wedding feast served on banana leaves. The couple is seen enjoying the sadhya with their family, with intricate floral carpets in the background. --ar 2:3" },
+                { title: "Tea Garden Wedding (Munnar)", image: "Lush Pixar-style 3D tea estate scene in Munnar, [LOCATION]. A vintage sign reads: '[NAME1] & [NAME2] are getting married, [DATE_HYPHEN]'. A tea crate is stamped '[STUDIO]'. --ar 2:3", video: "Lush, green cinematic video in a terraced tea estate. The couple stands amidst the tea bushes. Mist rolls over the hills. A peaceful, natural setting. --ar 2:3" },
+                { title: "Traditional Nair Wedding", image: "An elegant Pixar-style 3D scene of a traditional Nair wedding. The mandapam has a sign: 'Thalikettu of [NAME1] & [NAME2]'. Brass lamps and musicians. A gift box has the '[STUDIO]' logo. Venue at [LOCATION]. --ar 2:3", video: "An elegant, cinematic video of a traditional Nair wedding ceremony. The couple performs the thalikettu ritual in a beautifully decorated mandapam, with brass lamps and traditional music. --ar 2:3" },
+                { title: "Christian Wedding at Fort Kochi", image: "A beautiful Pixar-style 3D scene of a Christian wedding in Fort Kochi, [LOCATION]. A church notice board says: 'Holy Matrimony of [NAME1] & [NAME2] on [DATE_FULL]'. A wedding car has a '[STUDIO]' sticker. --ar 2:3", video: "A beautiful, cinematic video of a Christian wedding in Fort Kochi. The couple is seen leaving an old Portuguese-style church, surrounded by family and friends throwing rice petals. --ar 2:3" },
+                { title: "Kalarippayattu Theme", image: "A unique Pixar-style 3D scene with a Kalarippayattu theme in [LOCATION]. A banner reads: 'Celebrating the union of [NAME1] & [NAME2]'. The performance area has '[STUDIO]' branding. Traditional weapons and props. --ar 2:3", video: "A unique and energetic, cinematic video with a wedding inspired by the ancient martial art of Kalarippayattu. The couple is seen with a performance in the background, surrounded by traditional weapons and props. --ar 2:3" }
+            ],
+            "Andhra": [
+                { title: "Traditional Telugu Muhurtham", image: "A grand Pixar-style 3D scene of a traditional Telugu wedding in [LOCATION]. A floral sign reads: 'Muhurtham of [NAME1] & [NAME2] | [DATE_FULL]'. The couple exchanges talambralu. A ceremonial pot has '[STUDIO]' engraved. --ar 2:3", video: "A grand, cinematic video of a traditional Telugu wedding. The couple exchanges talambralu, with the groom pouring rice and jaggery on the bride's head. The mandapam is decorated with marigolds and jasmine. --ar 2:3" },
+                { title: "Gundamma Pelli", image: "A fun and lively Pixar-style 3D scene inspired by the movie \"Gundamma Katha.\" A retro movie poster reads '[NAME1] weds [NAME2]' in Telugu script. A director's clapboard shows '[STUDIO]' and '[DATE_DOTTED]' at [LOCATION]. --ar 2:3", video: "A fun and lively, cinematic video inspired by the movie \"Gundamma Katha.\" The couple is seen with their family, with a retro theme and vibrant colors. --ar 2:3" },
+                { title: "Godavari River Wedding", image: "A serene Pixar-style 3D scene of a wedding ceremony on the banks of the Godavari River at [LOCATION]. A decorated boat has a sign: '[NAME1] & [NAME2]'s Journey Begins'. A lantern has '[STUDIO]' on it. --ar 2:3", video: "A serene, cinematic video of a wedding on the banks of the Godavari River. The couple is in a boat, with the beautiful river and lush greenery in the background. --ar 2:3" },
+                { title: "Andhra Rural Wedding", image: "A rustic Pixar-style 3D scene of a rural wedding in a village in [LOCATION]. A welcome sign painted on a wall: '[NAME1] & [NAME2] Wedding'. A handwoven fabric has the '[STUDIO]' name. --ar 2:3", video: "A rustic and charming, cinematic video of a rural wedding in Andhra Pradesh. The couple is seen in a village setting, with traditional clay pots, handwoven fabrics, and a simple mandapam. --ar 2:3" },
+                { title: "Visakhapatnam Beach Wedding", image: "A beautiful Pixar-style 3D scene of a wedding on the beach in [LOCATION]. A sandcastle has a flag: '[NAME1_INITIAL] ♥ [NAME2_INITIAL], [DATE_HYPHEN]'. A surfboard is branded with '[STUDIO]'. --ar 2:3", video: "A beautiful, cinematic video of a wedding on the beach in Visakhapatnam. The couple is under a floral archway, with the Bay of Bengal in the background and a gentle sea breeze. --ar 2:3" },
+                { title: "Deccan Plateau Reception", image: "A majestic Pixar-style 3D scene of a reception on the Deccan Plateau. Projected lights on a rock formation show '[NAME1] & [NAME2] | [DATE_FULL]'. The DJ booth has a '[STUDIO]' logo. Location is [LOCATION]. --ar 2:3", video: "A majestic, cinematic video of a reception on the Deccan Plateau. The couple is seen against a backdrop of ancient rock formations and a stunning sunset. --ar 2:3" },
+                { title: "Hyderabad Nizam Style", image: "An opulent Pixar-style 3D scene of a Nizam-style wedding in [LOCATION]. An elegant scroll on a table reads: 'The Royal Wedding of [NAME1] & [NAME2]'. A jewelry box is engraved with '[STUDIO]'. --ar 2:3", video: "An opulent, cinematic video of a wedding inspired by the Nizami culture of Hyderabad. The couple is in a grand hall, with intricate chandeliers, rich fabrics, and historical artifacts. --ar 2:3" }
+            ],
+            "North Indian": [
+                { title: "Himalayan Ceremony", image: "A stunning Pixar-style 3D scene of a wedding ceremony in the snow-capped Himalayan mountains near [LOCATION]. A couple exchanges garlands. A prayer flag has text: '[NAME1] & [NAME2]'. A trekking bag with a '[STUDIO]' patch. --ar 2:3", video: "Cinematic video shot of a Pixar-style 3D wedding in the Himalayas. Snow-capped mountains, prayer flags, and ancient temples in background. Serene and majestic. --ar 2:3" },
+                { title: "Jaipur Palace Wedding", image: "A royal Pixar-style 3D scene in a grand Jaipur palace courtyard in [LOCATION]. A royal decree announces the wedding of '[NAME1] & [NAME2] on [DATE_FULL]'. A decorative box has the '[STUDIO]' emblem. --ar 2:3", video: "Royal cinematic video in Jaipur palace courtyard. Intricate frescoes, grand architecture. Couple under decorated archway. --ar 2:3" },
+                { title: "Varanasi Ganga Aarti", image: "An ethereal Pixar-style 3D scene of a wedding on the ghats of Varanasi, [LOCATION]. A floating diya has '[NAME1] & [NAME2]' written on it. A priest's ceremonial plate is from '[STUDIO]'. --ar 2:3", video: "Ethereal cinematic video on Ganges ghats. Glowing diyas, chanting priests, river backdrop. Spiritual and emotional. --ar 2:3" },
+                { title: "Punjabi Baraat", image: "An energetic Pixar-style 3D scene of a groom, [NAME1], on a decorated horse in [LOCATION]. A welcome banner says 'Welcome to the wedding of [NAME1] & [NAME2]'. A dhol drum has the '[STUDIO]' logo. --ar 2:3", video: "Energetic cinematic video of groom on horse. Dhol drums, dancing, confetti. Joyful chaos in streets. --ar 2:3" },
+                { title: "Rajasthan Desert Wedding", image: "A magical Pixar-style 3D scene of a wedding in the Thar Desert near [LOCATION]. A rustic wooden sign reads '[NAME1] & [NAME2] | [DATE_HYPHEN]'. A camel has a decorative blanket with the '[STUDIO]' name. --ar 2:3", video: "Magical cinematic video in Thar Desert. Tent, sand dunes, sunset, camels. Romantic and exotic. --ar 2:3" },
+                { title: "Delhi Monument Wedding", image: "A historic Pixar-style 3D scene of a wedding in a monument garden in [LOCATION]. An elegant invitation on a stand reads: 'The wedding of [NAME1] & [NAME2], [DATE_FULL]'. Catering sign says '[STUDIO]'. --ar 2:3", video: "Historic cinematic video in Delhi monument garden. Grand arches, greenery, couple posing. Elegant and timeless. --ar 2:3" },
+                { title: "Sikh Temple Wedding", image: "A sacred Pixar-style 3D scene inside a Gurdwara in [LOCATION]. A sign reads 'Anand Karaj of [NAME1] & [NAME2]'. The donation box has a sticker from '[STUDIO]'. --ar 2:3", video: "Sacred cinematic video inside Gurdwara. Golden light, ornate interiors, quiet devotion. Peaceful and spiritual. --ar 2:3" },
+                { title: "Amritsar Golden Temple", image: "A breathtaking Pixar-style 3D scene with [NAME1] and [NAME2] at the Golden Temple. A framed picture has the text '[NAME1] & [NAME2] | [DATE_DOTTED]' and a small '[STUDIO]' logo. --ar 2:3", video: "Breathtaking cinematic video at Golden Temple. Marble walkway, reflection in water, glowing temple. Majestic and divine. --ar 2:3" },
+                { title: "Grand Delhi Reception", image: "A luxurious Pixar-style 3D scene of a grand reception in [LOCATION]. A large screen on stage shows '[NAME1] & [NAME2] - Reception'. The cake has a tag from '[STUDIO]'. --ar 2:3", video: "Luxurious cinematic video in Delhi hotel ballroom. Chandelier, floral arrangements, lit stage. Glamorous and grand. --ar 2:3" },
+                { title: "Agra Fort Ceremony", image: "A majestic Pixar-style 3D wedding scene inside the historic Agra Fort, [LOCATION]. A stone plaque reads 'Celebrating [NAME1] & [NAME2]'. A guide book has a '[STUDIO]' bookmark. --ar 2:3", video: "Majestic cinematic video inside Agra Fort. Red sandstone walls, intricate carvings, couple exchanging vows. Historic and royal. --ar 2:3" },
+                { title: "Kashmir Winter Wedding", image: "A romantic Pixar-style 3D scene of a wedding in snowy [LOCATION]. [NAME1] and [NAME2] are wrapped in shawls. A wooden sign on a tree says '[NAME1] ♥ [NAME2]'. A shikara boat is named '[STUDIO]'. --ar 2:3", video: "Romantic cinematic video in snowy Kashmir. Traditional shawls, Dal Lake, snow-covered trees. Cozy and picturesque. --ar 2:3" },
+                { title: "Lucknowi Chikankari Theme", image: "An elegant Pixar-style 3D scene with a Chikankari themed wedding in [LOCATION]. A delicate fabric banner reads '[NAME1] & [NAME2]'. An artisan's workbox has a '[STUDIO]' label. --ar 2:3", video: "Elegant cinematic video with Chikankari theme. White/pastel fabrics, floral designs, beautiful hall. Graceful and artistic. --ar 2:3" },
+                { title: "Kullu Manali Valley Wedding", image: "A charming Pixar-style 3D scene of a wedding in Kullu Valley, [LOCATION]. A welcome board says 'Wedding of [NAME1] & [NAME2], [DATE_FULL]'. A local craft stall has a '[STUDIO]' sign. --ar 2:3", video: "Charming cinematic video in Kullu Valley. Pine trees, snow-fed river, mountain views. Natural and scenic. --ar 2:3" },
+                { title: "Ladakh Monastery Ceremony", image: "A serene Pixar-style 3D wedding scene at a Buddhist monastery in [LOCATION]. Monks hold a scroll with '[NAME1] & [NAME2]' written in Tibetan script. A camera has a '[STUDIO]' strap. --ar 2:3", video: "Serene cinematic video at Ladakh monastery. Monks blessing, prayer flags, stark landscape. Spiritual and awe-inspiring. --ar 2:3" },
+                { title: "Shimla Summer Wedding", image: "A vibrant Pixar-style 3D scene of a wedding in the hills of [LOCATION]. A garden sign reads 'Celebrating [NAME1] & [NAME2]'. A picnic basket is labelled '[STUDIO]'. --ar 2:3", video: "Vibrant cinematic video in Shimla hills. Lush garden, colorful flowers, clear blue sky. Fresh and joyful. --ar 2:3" },
+                { title: "Sangeet in a Haveli", image: "A lively Pixar-style 3D scene of a Sangeet night in a Rajasthani Haveli in [LOCATION]. A stage backdrop reads 'Sangeet Night: [NAME1] & [NAME2]'. An instrument has a '[STUDIO]' sticker. --ar 2:3", video: "Lively cinematic video in Rajasthani Haveli. Courtyard dancing, folk musicians, festive lights. Cultural and energetic. --ar 2:3" },
+                { title: "Ranthambore Safari Wedding", image: "An adventurous Pixar-style 3D scene of a wedding in Ranthambore, [LOCATION]. A safari jeep's license plate reads '[NAME1_INITIAL]-[NAME2_INITIAL]-[DATE_HYPHEN]'. Binoculars have the '[STUDIO]' brand. --ar 2:3", video: "Adventurous cinematic video in Ranthambore jungle. Safari jeep, wild ambiance, couple taking vows. Unique and thrilling. --ar 2:3" },
+                { title: "Pushkar Fair Wedding", image: "A festive Pixar-style 3D scene of a wedding during the Pushkar fair. A hot air balloon has a banner: '[NAME1] & [NAME2]'. A stall is named '[STUDIO] Handicrafts'. Location is [LOCATION]. --ar 2:3", video: "Festive cinematic video during Pushkar fair. Hot air balloons, vibrant stalls, joyful crowd. Colorful and exciting. --ar 2:3" },
+                { title: "Jodhpur Blue City Wedding", image: "A unique Pixar-style 3D scene of a wedding in the blue city of [LOCATION]. On a rooftop, a kite flies with '[NAME1] & [NAME2]' on it. A painter's easel has '[STUDIO]' signed at the bottom. --ar 2:3", video: "Unique cinematic video in Jodhpur’s blue city. Rooftop, blue houses, Mehrangarh Fort. Artistic and cultural. --ar 2:3" },
+                { title: "Leh Ladakh Trek Wedding", image: "An adventurous Pixar-style 3D scene of a couple on a wedding trek in Ladakh. A trail marker shows '[NAME1] & [NAME2]'s path to forever'. A backpack has a '[STUDIO]' patch. Location is [LOCATION]. --ar 2:3", video: "Adventurous cinematic video on Ladakh trek. Wedding outfits on mountain trail, breathtaking views. Bold and scenic. --ar 2:3" },
+                { title: "Dharamshala Monastery", image: "A peaceful Pixar-style 3D scene of a wedding in Dharamshala, [LOCATION]. A monastery banner welcomes '[NAME1] & [NAME2]'. A calligraphy set has the '[STUDIO]' logo. --ar 2:3", video: "Peaceful cinematic video in Dharamshala monastery. Rolling hills, prayer flags, meditative vibe. Calm and spiritual. --ar 2:3" },
+                { title: "Vrindavan Holi Wedding", image: "A colorful Pixar-style 3D scene of a wedding during Holi in [LOCATION]. A wall graffiti says '[NAME1] loves [NAME2], [DATE_DOTTED]'. A water gun is branded '[STUDIO]'. --ar 2:3", video: "Colorful cinematic video during Holi in Vrindavan. Couple playing with colors, laughing, dancing. Joyful and vibrant. --ar 2:3" },
+                { title: "Khajuraho Temple Wedding", image: "A historic Pixar-style 3D scene of a wedding at the Khajuraho temple complex. An information plaque reads: 'The union of [NAME1] & [NAME2] at [LOCATION]'. A photographer's bag shows the '[STUDIO]' name. --ar 2:3", video: "Historic cinematic video at Khajuraho temples. Intricate carvings, stone sculptures, sacred vibe. Cultural and majestic. --ar 2:3" },
+                { title: "Mathura Ras Leela", image: "A spiritual Pixar-style 3D wedding scene inspired by the Ras Leela in [LOCATION]. A banner decorated with flowers says '[NAME1] & [NAME2]'s Ras Leela'. A flute has '[STUDIO]' engraved on it. --ar 2:3", video: "Spiritual cinematic video inspired by Ras Leela. Couple dancing in garden, celebrating love. Mythological and romantic. --ar 2:3" },
+                { title: "Udaipur Lake Palace", image: "A romantic Pixar-style 3D scene of a wedding on the Lake Palace in [LOCATION]. A boat is named 'The [NAME1_INITIAL]-[NAME2_INITIAL] Dream'. A royal cushion has the '[STUDIO]' crest. --ar 2:3", video: "Romantic cinematic video on Lake Palace boat. Palace and lake backdrop, sunset glow. Dreamy and luxurious. --ar 2:3" },
+                { title: "Polo Ground Wedding", image: "A unique Pixar-style 3D wedding scene on a polo ground in [LOCATION]. The scoreboard shows '[NAME1] vs [NAME2] - Match of a Lifetime'. A polo mallet is engraved with '[STUDIO]'. --ar 2:3", video: "Unique cinematic video on polo ground. Polo horses, riders, elegant adventure. Sophisticated and bold. --ar 2:3" },
+                { title: "Baraat in Old Delhi", image: "A vibrant Pixar-style 3D scene of a baraat procession in the narrow, bustling streets of [LOCATION]. A food stall has a menu board: '[NAME1]'s Wedding Special'. A videographer's camera has a '[STUDIO]' sticker. --ar 2:3", video: "Vibrant cinematic video in Old Delhi streets. Narrow lanes, food stalls, dancing crowd. Authentic and chaotic joy. --ar 2:3" }
+            ]
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const appContainer = document.getElementById('app-container');
+            const loginContainer = document.getElementById('login-container');
+            const loginForm = document.getElementById('login-form');
+            const logoutBtn = document.getElementById('logout-btn');
+            const welcomeMessage = document.getElementById('welcome-message');
+            const form = document.getElementById('customization-form');
+            const promptContainer = document.getElementById('prompt-container');
+            const categoryTabsContainer = document.getElementById('category-tabs');
+            const noResults = document.getElementById('no-results');
+            const loginError = document.getElementById('login-error');
+            const imageCopyCounter = document.getElementById('image-copy-counter');
+            const videoCopyCounter = document.getElementById('video-copy-counter');
+            const limitModal = document.getElementById('limit-modal');
+            const limitModalText = document.getElementById('limit-modal-text');
+            const limitCloseBtn = document.getElementById('limit-close-btn');
+            const DAILY_IMAGE_LIMIT = 5;
+            const DAILY_VIDEO_LIMIT = 5;
+
+            let currentCategory = Object.keys(promptData)[0];
+            let placeholders = {
+                '[NAME1]': '', '[NAME2]': '', '[STUDIO]': '', '[LOCATION]': '',
+                '[DATE_DOTTED]': '', '[DATE_HYPHEN]': '', '[DATE_FULL]': '', '[DATE_SPACED]': '',
+                '[NAME1_INITIAL]': '', '[NAME2_INITIAL]': ''
+            };
+            
+            const categoryOffsets = {};
+            let totalPrompts = 0;
+            for (const category in promptData) {
+                categoryOffsets[category] = totalPrompts;
+                totalPrompts += promptData[category].length;
+            }
+
+            // --- USER AND CREDIT MANAGEMENT ---
+            const getUserData = (email) => {
+                const allUserData = JSON.parse(localStorage.getItem('allUserData')) || {};
+                return allUserData[email] || { 
+                    lastLogin: '', 
+                    imageCount: 0, 
+                    videoCount: 0 
+                };
+            };
+
+            const saveUserData = (email, data) => {
+                const allUserData = JSON.parse(localStorage.getItem('allUserData')) || {};
+                allUserData[email] = data;
+                localStorage.setItem('allUserData', JSON.stringify(allUserData));
+            };
+
+            const initAuth = () => {
+                if (sessionStorage.getItem('isLoggedIn') === 'true') {
+                    const userEmail = sessionStorage.getItem('userEmail') || '';
+                    const userName = userEmail.split('@')[0];
+                    welcomeMessage.textContent = `Welcome, ${userName}`;
+                    
+                    loginContainer.classList.add('hidden');
+                    appContainer.classList.remove('hidden');
+                    initApp();
+                } else {
+                    loginContainer.classList.remove('hidden');
+                    appContainer.classList.add('hidden');
+                }
+            };
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                if (password === 'vfx@123') {
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    sessionStorage.setItem('userEmail', email);
+
+                    // Reset credits on new login for the day
+                    const today = new Date().toISOString().split('T')[0];
+                    let userData = getUserData(email);
+                    if (userData.lastLogin !== today) {
+                        userData.imageCount = 0;
+                        userData.videoCount = 0;
+                        userData.lastLogin = today;
+                        saveUserData(email, userData);
+                    }
+
+                    loginError.classList.add('hidden');
+                    initAuth();
+                } else {
+                    loginError.classList.remove('hidden');
+                }
+            });
+
+            logoutBtn.addEventListener('click', () => {
+                sessionStorage.removeItem('isLoggedIn');
+                sessionStorage.removeItem('userEmail');
+                location.reload();
+            });
+
+
+            const updateCopyCounterUI = () => {
+                const userEmail = sessionStorage.getItem('userEmail');
+                if (!userEmail) return;
+
+                const userData = getUserData(userEmail);
+                const imageCopiesLeft = DAILY_IMAGE_LIMIT - userData.imageCount;
+                const videoCopiesLeft = DAILY_VIDEO_LIMIT - userData.videoCount;
+
+                imageCopyCounter.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-image-alt" viewBox="0 0 16 16"><path d="M7 2.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0m4.225 4.053a.5.5 0 0 0-.577.093l-3.71 4.71-2.66-2.772a.5.5 0 0 0-.63.062L.002 13.5v-11a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11-2.5a.5.5 0 0 0-1 0V13.5l-2.438-2.546z"/></svg> <span>${imageCopiesLeft < 0 ? 0 : imageCopiesLeft}/${DAILY_IMAGE_LIMIT}</span>`;
+                videoCopyCounter.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-film" viewBox="0 0 16 16"><path d="M0 1a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm4 0v6h8V1zm8 8H4v6h8zM1 1v2h2V1zm2 3H1v2h2zM1 7v2h2V7zm2 3H1v2h2zm-2 3v2h2v-2zM15 1h-2v2h2zm-2 3v2h2V4zm2 3h-2v2h2zm-2 3v2h2v-2zm2 3h-2v2h2z"/></svg> <span>${videoCopiesLeft < 0 ? 0 : videoCopiesLeft}/${DAILY_VIDEO_LIMIT}</span>`;
+
+                document.querySelectorAll('.image-copy-btn').forEach(btn => btn.disabled = imageCopiesLeft <= 0);
+                document.querySelectorAll('.video-copy-btn').forEach(btn => btn.disabled = videoCopiesLeft <= 0);
+
+                promptContainer.classList.toggle('hide-image-prompts', imageCopiesLeft <= 0);
+                promptContainer.classList.toggle('hide-video-prompts', videoCopiesLeft <= 0);
+            };
+            
+            const recordCopy = (type) => {
+                const userEmail = sessionStorage.getItem('userEmail');
+                if (!userEmail) return false;
+
+                let userData = getUserData(userEmail);
+                
+                if (type === 'image') {
+                    if (userData.imageCount < DAILY_IMAGE_LIMIT) {
+                        userData.imageCount++;
+                        saveUserData(userEmail, userData);
+                        updateCopyCounterUI();
+                        return true;
+                    }
+                } else if (type === 'video') {
+                    if (userData.videoCount < DAILY_VIDEO_LIMIT) {
+                        userData.videoCount++;
+                        saveUserData(userEmail, userData);
+                        updateCopyCounterUI();
+                        return true;
+                    }
+                }
+                
+                limitModalText.textContent = `You have used all your daily ${type} prompt copies. Please come back tomorrow!`;
+                limitModal.classList.remove('hidden');
+                return false;
+            };
+
+            limitCloseBtn.addEventListener('click', () => limitModal.classList.add('hidden'));
+            limitModal.addEventListener('click', (e) => { if (e.target === limitModal) limitModal.classList.add('hidden'); });
+
+            const initApp = () => {
+                const getFormattedDates = (dateString) => {
+                    if (!dateString) return { dotted: '', hyphen: '', full: '', spaced: '' };
+                    const date = new Date(dateString + 'T00:00:00');
+                     if (isNaN(date.getTime())) return { dotted: '', hyphen: '', full: '', spaced: '' };
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const year = date.getFullYear();
+                    const fullMonth = date.toLocaleString('default', { month: 'long' });
+                    return {
+                        dotted: `${day}.${month}.${year}`, hyphen: `${day}-${month}-${year}`,
+                        full: `${date.getDate()} ${fullMonth} ${year}`, spaced: `${day} ${month} ${year}`
+                    };
+                };
+                
+                const updatePlaceholders = () => {
+                    const name1 = document.getElementById('name1').value || '[NAME1]';
+                    const name2 = document.getElementById('name2').value || '[NAME2]';
+                    const studio = document.getElementById('studio').value || '[STUDIO]';
+                    const location = document.getElementById('location').value || '[LOCATION]';
+                    const dateVal = document.getElementById('date').value;
+                    const dates = getFormattedDates(dateVal);
+                    placeholders = {
+                        '[NAME1]': name1, '[NAME2]': name2, '[STUDIO]': studio, '[LOCATION]': location,
+                        '[DATE_DOTTED]': dates.dotted || '[DATE_DOTTED]', '[DATE_HYPHEN]': dates.hyphen || '[DATE_HYPHEN]',
+                        '[DATE_FULL]': dates.full || '[DATE_FULL]', '[DATE_SPACED]': dates.spaced || '[DATE_SPACED]',
+                        '[NAME1_INITIAL]': name1 === '[NAME1]' ? '[NAME1_INITIAL]' : (name1.charAt(0) || ''),
+                        '[NAME2_INITIAL]': name2 === '[NAME2]' ? '[NAME2_INITIAL]' : (name2.charAt(0) || '')
+                    };
+                    renderPrompts();
+                };
+
+                const formatPrompt = (text) => {
+                    return Object.entries(placeholders).reduce((acc, [key, value]) => {
+                        return acc.replace(new RegExp(key.replace(/\[/g, '\\[').replace(/\]/g, '\\]'), 'g'), value);
+                    }, text);
+                };
+
+                const copyToClipboard = (text, btn) => {
+                    navigator.clipboard.writeText(text).then(() => {
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/></svg><span>Copied!</span>`;
+                        setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+                    }).catch(err => console.error('Failed to copy text: ', err));
+                };
+
+                const renderPrompts = () => {
+                    const promptsToRender = promptData[currentCategory] || [];
+                    const baseIndex = categoryOffsets[currentCategory];
+
+                    if (promptsToRender.length === 0) {
+                        promptContainer.innerHTML = ''; noResults.classList.remove('hidden'); return;
+                    }
+                    noResults.classList.add('hidden');
+                    promptContainer.innerHTML = promptsToRender.map((prompt, index) => {
+                        const globalIndex = baseIndex + index + 1;
+                        const paddedIndex = String(globalIndex).padStart(3, '0');
+                        const imageUrl = `images/${paddedIndex}.jpeg`;
+
+                        return `
+                            <div class="prompt-card bg-white/70 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-2 hover:shadow-2xl" style="animation-delay: ${index * 80}ms;">
+                                <img src="${imageUrl}" alt="${prompt.title}" class="w-full h-48 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400/FFF0F5/DB2777?text=Image+Not+Found';">
+                                <div class="p-5">
+                                    <h3 class="text-xl font-bold font-display text-slate-800 mb-4">${prompt.title}</h3>
+                                    <div class="space-y-6">
+                                        <div class="prompt-group image-prompt-group bg-amber-50/50 p-4 rounded-xl border-t-4 border-amber-400">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <h4 class="font-semibold text-amber-800">Image Prompt</h4>
+                                                <button class="copy-btn image-copy-btn flex items-center gap-1.5 text-xs font-semibold bg-amber-500 text-white px-3 py-1.5 rounded-full hover:bg-amber-600 shadow-md hover:shadow-lg transition-all">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
+                                                    <span>Copy</span>
+                                                </button>
+                                            </div>
+                                            <p class="prompt-text p-3 rounded-lg text-sm !border-0">${formatPrompt(prompt.image)}</p>
+                                        </div>
+                                        <div class="prompt-group video-prompt-group bg-sky-50/50 p-4 rounded-xl border-t-4 border-sky-400">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <h4 class="font-semibold text-sky-800">Video Prompt</h4>
+                                                <button class="copy-btn video-copy-btn flex items-center gap-1.5 text-xs font-semibold bg-sky-500 text-white px-3 py-1.5 rounded-full hover:bg-sky-600 shadow-md hover:shadow-lg transition-all">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
+                                                    <span>Copy</span>
+                                                </button>
+                                            </div>
+                                            <p class="prompt-text p-3 rounded-lg text-sm !border-0">${formatPrompt(prompt.video)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }).join('');
+                    updateCopyCounterUI();
+                };
+
+                const renderTabs = () => {
+                    categoryTabsContainer.innerHTML = Object.keys(promptData).map(category => `
+                        <button data-category="${category}" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 transition-all duration-300 rounded-t-lg ${category === currentCategory ? 'tab-active' : 'border-transparent text-slate-500 hover:text-pink-600'}">
+                            ${category}
+                        </button>
+                    `).join('');
+                };
+
+                form.addEventListener('input', updatePlaceholders);
+                categoryTabsContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('tab-btn')) {
+                        currentCategory = e.target.dataset.category;
+                        renderTabs(); renderPrompts();
+                    }
+                });
+
+                promptContainer.addEventListener('click', (e) => {
+                    const imageCopyBtn = e.target.closest('.image-copy-btn');
+                    if (imageCopyBtn && !imageCopyBtn.disabled) {
+                        const card = imageCopyBtn.closest('.prompt-card');
+                        const promptEl = card.querySelector('.image-prompt-group .prompt-text');
+                        if (recordCopy('image')) {
+                            copyToClipboard(promptEl.innerText, imageCopyBtn);
+                            promptEl.classList.add('is-copying-image');
+                            setTimeout(() => promptEl.classList.remove('is-copying-image'), 700);
+                            
+                            const videoPromptGroup = card.querySelector('.video-prompt-group');
+                            if (videoPromptGroup) {
+                                document.querySelectorAll('.is-highlighted').forEach(el => el.classList.remove('is-highlighted'));
+                                videoPromptGroup.classList.add('is-highlighted');
+                                setTimeout(() => videoPromptGroup.classList.remove('is-highlighted'), 3600);
+                            }
+                        }
+                    }
+                    
+                    const videoCopyBtn = e.target.closest('.video-copy-btn');
+                    if(videoCopyBtn && !videoCopyBtn.disabled){
+                        const promptGroup = videoCopyBtn.closest('.video-prompt-group');
+                        const promptEl = promptGroup.querySelector('.prompt-text');
+                        if (recordCopy('video')) {
+                            copyToClipboard(promptEl.innerText, videoCopyBtn);
+                            promptEl.classList.add('is-copying-video');
+                            setTimeout(() => promptEl.classList.remove('is-copying-video'), 700);
+                            if(promptGroup.classList.contains('is-highlighted')) {
+                                promptGroup.classList.remove('is-highlighted');
+                            }
+                        }
+                    }
+                });
+                
+                renderTabs();
+                updatePlaceholders();
+            };
+            
+            initAuth();
+        });
+    </script>
+</body>
+</html>
